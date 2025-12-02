@@ -43,8 +43,8 @@ const MOCK_MEETINGS: FullMeetingData[] = [
 
 const App: React.FC = () => {
   // Access environment variables directly
-  const envApiKey = import.meta.env.VITE_GROQ_API_KEY;
-  const envOutlookId = import.meta.env.VITE_OUTLOOK_CLIENT_ID;
+  const envApiKey = import.meta.env.VITE_GROQ_API_KEY || import.meta.env.GROQ_API_KEY;
+  const envOutlookId = import.meta.env.VITE_OUTLOOK_CLIENT_ID || import.meta.env.OUTLOOK_CLIENT_ID;
 
   // Persistence for meetings
   const [meetings, setMeetings] = useState<FullMeetingData[]>(() => {
