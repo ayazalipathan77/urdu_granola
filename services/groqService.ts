@@ -23,16 +23,18 @@ export const getAvailableGroqModels = async (apiKey: string): Promise<string[]> 
 
 // Function to select a suitable LLM model
 export const selectLLMModel = async (apiKey: string): Promise<string> => {
-  const models = await getAvailableGroqModels(apiKey);
-  // Prefer Llama models, then Mixtral, fallback to any available
+  const allModels = await getAvailableGroqModels(apiKey);
+  // Filter out non-chat models (like whisper models)
+  const chatModels = allModels.filter(model => !model.includes('whisper'));
+  // Prefer Llama models, then Mixtral, fallback to any available chat model
   const preferredModels = ['llama3-8b-8192', 'llama3-70b-8192', 'mixtral-8x7b-32768', 'gemma-7b-it'];
   for (const model of preferredModels) {
-    if (models.includes(model)) {
+    if (chatModels.includes(model)) {
       return model;
     }
   }
-  // Return first available model if none preferred
-  return models[0] || 'llama3-8b-8192';
+  // Return first available chat model if none preferred
+  return chatModels[0] || 'llama3-8b-8192';
 };
 
 // Helper function for retry with exponential backoff
