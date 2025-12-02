@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Mic, Square, Upload, Loader2, AlertCircle, Pause, Play } from 'lucide-react';
 import { FullMeetingData } from '../types';
 import { processAudioWithGroq } from '../services/groqService';
+import { audioStorage } from '../services/audioStorage';
 
 interface NewMeetingProps {
   onAddMeeting: (meeting: FullMeetingData) => void;
@@ -132,13 +133,16 @@ const NewMeeting: React.FC<NewMeetingProps> = ({ onAddMeeting, apiKey }) => {
     // Use existing ID if we are recording for a scheduled meeting, otherwise generate new
     const meetingId = existingMeetingId || Date.now().toString();
 
+    // Save audio to IndexedDB
+    await audioStorage.saveAudio(meetingId, blob);
+
     const initialMeetingData: FullMeetingData = {
       id: meetingId,
       title: meetingTitle,
       createdAt: new Date().toISOString(), // Update start time to now
       durationSec: recordedDuration,
       status: 'processing',
-      audioBlob: blob
+      audioId: meetingId
     };
 
     // Optimistic add/update

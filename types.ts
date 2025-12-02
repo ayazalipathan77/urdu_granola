@@ -5,7 +5,7 @@ export interface Meeting {
   scheduledAt?: string; // ISO String for future meetings
   durationSec: number;
   status: 'scheduled' | 'processing' | 'completed' | 'failed';
-  audioBlob?: Blob; // For demo purposes, we keep blob in memory/indexedDB
+  audioId?: string; // Reference to audio stored in IndexedDB
 }
 
 export interface TranscriptSegment {

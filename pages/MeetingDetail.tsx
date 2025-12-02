@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Navigate, useNavigate } from 'react-router-dom';
 import { FullMeetingData } from '../types';
-import { Download, ArrowLeft, CheckCircle, List, Type, Trash2 } from 'lucide-react';
+import { Download, ArrowLeft, CheckCircle, List, Type, Trash2, Play, Pause, Volume2 } from 'lucide-react';
+import { audioStorage } from '../services/audioStorage';
 
 interface MeetingDetailProps {
   meetings: FullMeetingData[];
@@ -12,7 +13,56 @@ const MeetingDetail: React.FC<MeetingDetailProps> = ({ meetings, onDeleteMeeting
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const meeting = meetings.find(m => m.id === id);
-  const [activeTab, setActiveTab] = useState<'notes' | 'transcript'>('notes');
+  const [activeTab, setActiveTab] = useState<'notes' | 'transcript' | 'audio'>('notes');
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  // Load audio from IndexedDB when meeting has audioId
+  useEffect(() => {
+    if (meeting?.audioId) {
+      audioStorage.loadAudio(meeting.audioId).then(blob => {
+        if (blob) {
+          setAudioBlob(blob);
+        }
+      }).catch(console.error);
+    }
+  }, [meeting?.audioId]);
+
+  // Audio playback handlers
+  const togglePlayPause = () => {
+    if (!audioRef.current) return;
+
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play();
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    if (audioRef.current) {
+      setCurrentTime(audioRef.current.currentTime);
+    }
+  };
+
+  const handleLoadedMetadata = () => {
+    if (audioRef.current) {
+      setDuration(audioRef.current.duration);
+    }
+  };
+
+  const handlePlay = () => setIsPlaying(true);
+  const handlePause = () => setIsPlaying(false);
+  const handleEnded = () => setIsPlaying(false);
+
+  const formatTime = (time: number) => {
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
 
   if (!meeting) {
     return <Navigate to="/" replace />;
@@ -28,8 +78,22 @@ const MeetingDetail: React.FC<MeetingDetailProps> = ({ meetings, onDeleteMeeting
     );
   }
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!meeting) return;
+
+    if (activeTab === 'audio' && audioBlob) {
+      // Download audio file
+      const filename = `${meeting.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_audio.${audioBlob.type.split('/')[1]}`;
+      const url = URL.createObjectURL(audioBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      return;
+    }
 
     let content = '';
     let filename = `${meeting.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}`;
@@ -115,10 +179,10 @@ const MeetingDetail: React.FC<MeetingDetailProps> = ({ meetings, onDeleteMeeting
             <button
               onClick={handleDownload}
               className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors"
-              title={`Download ${activeTab === 'notes' ? 'Notes' : 'Transcript'}`}
+              title={`Download ${activeTab === 'notes' ? 'Notes' : activeTab === 'transcript' ? 'Transcript' : 'Audio'}`}
             >
               <Download size={18} />
-              <span>Download {activeTab === 'notes' ? 'Notes' : 'Transcript'}</span>
+              <span>Download {activeTab === 'notes' ? 'Notes' : activeTab === 'transcript' ? 'Transcript' : 'Audio'}</span>
             </button>
           </div>
         </div>
@@ -147,6 +211,18 @@ const MeetingDetail: React.FC<MeetingDetailProps> = ({ meetings, onDeleteMeeting
             <Type size={16} />
             Transcript
           </button>
+          {audioBlob && (
+            <button
+              onClick={() => setActiveTab('audio')}
+              className={`pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'audio'
+                ? 'border-emerald-600 text-emerald-700'
+                : 'border-transparent text-stone-500 hover:text-stone-700'
+                }`}
+            >
+              <Volume2 size={16} />
+              Audio
+            </button>
+          )}
         </nav>
       </div>
 
@@ -233,6 +309,54 @@ const MeetingDetail: React.FC<MeetingDetailProps> = ({ meetings, onDeleteMeeting
             ) : (
               <div className="p-8 text-center text-stone-500">No transcript available.</div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'audio' && audioBlob && (
+          <div className="p-8">
+            <div className="max-w-md mx-auto">
+              <h3 className="text-xl font-bold text-stone-800 mb-6 text-center">Audio Playback</h3>
+
+              <audio
+                ref={audioRef}
+                onTimeUpdate={handleTimeUpdate}
+                onLoadedMetadata={handleLoadedMetadata}
+                onPlay={handlePlay}
+                onPause={handlePause}
+                onEnded={handleEnded}
+                className="hidden"
+              >
+                <source src={URL.createObjectURL(audioBlob)} type={audioBlob.type} />
+              </audio>
+
+              <div className="bg-stone-50 rounded-xl p-6 border border-stone-200">
+                <div className="flex items-center justify-center mb-4">
+                  <button
+                    onClick={togglePlayPause}
+                    className="w-16 h-16 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center shadow-lg transition-transform hover:scale-105"
+                  >
+                    {isPlaying ? <Pause size={32} /> : <Play size={32} className="ml-1" />}
+                  </button>
+                </div>
+
+                <div className="text-center mb-4">
+                  <div className="text-sm text-stone-600 font-mono">
+                    {formatTime(currentTime)} / {formatTime(duration)}
+                  </div>
+                </div>
+
+                <div className="w-full bg-stone-200 rounded-full h-2 mb-4">
+                  <div
+                    className="bg-emerald-600 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
+                  />
+                </div>
+
+                <div className="text-center text-sm text-stone-500">
+                  {meeting.title}
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>

@@ -24,8 +24,8 @@ export const getAvailableGroqModels = async (apiKey: string): Promise<string[]> 
 // Function to select a suitable LLM model
 export const selectLLMModel = async (apiKey: string): Promise<string> => {
   const allModels = await getAvailableGroqModels(apiKey);
-  // Filter out non-chat models (like whisper models)
-  const chatModels = allModels.filter(model => !model.includes('whisper'));
+  // Filter out non-chat models (like whisper and TTS models)
+  const chatModels = allModels.filter(model => !model.includes('whisper') && !model.includes('tts'));
   // Prefer Llama models, then Mixtral, fallback to any available chat model
   const preferredModels = ['llama3-8b-8192', 'llama3-70b-8192', 'mixtral-8x7b-32768', 'gemma-7b-it'];
   for (const model of preferredModels) {
@@ -264,16 +264,18 @@ TRANSCRIPT SEGMENTS:
 
     // Parse the structured response using regex for flexibility
     const summaryMatch = responseText.match(/SUMMARY:\s*(.*?)(?=\n\n[A-Z]+:|$)/s);
-    const summary = summaryMatch ? summaryMatch[1].trim() : '';
+    let summary = summaryMatch ? summaryMatch[1].trim() : '';
+    // Clean summary by removing any embedded headers and unwanted text
+    summary = summary.replace(/[A-Z][A-Z ]+:.*/g, '').replace(/^- /gm, '').trim();
 
     const actionItemsMatch = responseText.match(/ACTION ITEMS:\s*(.*?)(?=\n\n[A-Z]+:|$)/s);
-    const actionItems = actionItemsMatch ? actionItemsMatch[1].split('\n').filter((line: string) => line.trim().startsWith('-') || line.trim().match(/^\d+\./)).map((line: string) => line.replace(/^[-•*]\s*/, '').trim()) : [];
+    const actionItems = actionItemsMatch ? actionItemsMatch[1].split('\n').filter((line: string) => line.trim().startsWith('-') || line.trim().match(/^\d+\./)).map((line: string) => line.replace(/^[-•*]\s*/, '').replace(/Speaker \d+:\s*/gi, '').replace(/"[^"]*"/g, '').trim()).filter((line: string) => line.length > 0) : [];
 
     const decisionsMatch = responseText.match(/DECISIONS:\s*(.*?)(?=\n\n[A-Z]+:|$)/s);
-    const decisions = decisionsMatch ? decisionsMatch[1].split('\n').filter((line: string) => line.trim().startsWith('-') || line.trim().match(/^\d+\./)).map((line: string) => line.replace(/^[-•*]\s*/, '').trim()) : [];
+    const decisions = decisionsMatch ? decisionsMatch[1].split('\n').filter((line: string) => line.trim().startsWith('-') || line.trim().match(/^\d+\./)).map((line: string) => line.replace(/^[-•*]\s*/, '').replace(/Speaker \d+:\s*/gi, '').replace(/"[^"]*"/g, '').trim()).filter((line: string) => line.length > 0) : [];
 
     const keyPointsMatch = responseText.match(/KEY POINTS:\s*(.*?)(?=\n\n[A-Z]+:|$)/s);
-    const keyPoints = keyPointsMatch ? keyPointsMatch[1].split('\n').filter((line: string) => line.trim().startsWith('-') || line.trim().match(/^\d+\./)).map((line: string) => line.replace(/^[-•*]\s*/, '').trim()) : [];
+    const keyPoints = keyPointsMatch ? keyPointsMatch[1].split('\n').filter((line: string) => line.trim().startsWith('-') || line.trim().match(/^\d+\./)).map((line: string) => line.replace(/^[-•*]\s*/, '').replace(/Speaker \d+:\s*/gi, '').replace(/"[^"]*"/g, '').trim()).filter((line: string) => line.length > 0) : [];
 
     const transcriptSegmentsMatch = responseText.match(/TRANSCRIPT SEGMENTS:\s*(.*?)(?=\n\n[A-Z]+:|$)/s);
     let transcriptSegments: Array<{ speaker: string, text: string, start: number, end: number }> = [];

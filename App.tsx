@@ -9,6 +9,7 @@ import ApiKeyModal from './components/ApiKeyModal';
 import { FullMeetingData } from './types';
 import { Settings } from 'lucide-react';
 import { getAvailableGroqModels } from './services/groqService';
+import { audioStorage } from './services/audioStorage';
 
 // Dummy Data for demonstration
 const MOCK_MEETINGS: FullMeetingData[] = [
@@ -82,7 +83,7 @@ const App: React.FC = () => {
   }, [apiKey]);
 
   useEffect(() => {
-    const meetingsToSave = meetings.map(({ audioBlob, ...rest }) => rest);
+    const meetingsToSave = meetings.map(({ ...rest }) => rest);
     localStorage.setItem('urdu_granola_meetings', JSON.stringify(meetingsToSave));
   }, [meetings]);
 
@@ -118,7 +119,14 @@ const App: React.FC = () => {
     });
   };
 
-  const handleDeleteMeeting = (meetingId: string) => {
+  const handleDeleteMeeting = async (meetingId: string) => {
+    // Delete audio from IndexedDB if it exists
+    try {
+      await audioStorage.deleteAudio(meetingId);
+    } catch (error) {
+      console.error('Failed to delete audio:', error);
+    }
+    // Remove meeting from state
     setMeetings(prev => prev.filter(meeting => meeting.id !== meetingId));
   };
 
