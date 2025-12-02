@@ -1,17 +1,18 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FullMeetingData } from '../types';
-import { Calendar, Clock, ChevronRight, FileText, AlertTriangle, Loader, RefreshCw, Mic, Lock } from 'lucide-react';
+import { Calendar, Clock, ChevronRight, FileText, AlertTriangle, Loader, RefreshCw, Mic, Lock, Trash2 } from 'lucide-react';
 import { getMockCalendarEvents } from '../services/calendarService';
 import { fetchOutlookEvents } from '../services/microsoftGraph';
 
 interface DashboardProps {
   meetings: FullMeetingData[];
   onSyncCalendar?: (events: FullMeetingData[]) => void;
+  onDeleteMeeting?: (meetingId: string) => void;
   outlookClientId?: string;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ meetings, onSyncCalendar, outlookClientId }) => {
+const Dashboard: React.FC<DashboardProps> = ({ meetings, onSyncCalendar, onDeleteMeeting, outlookClientId }) => {
   const navigate = useNavigate();
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -28,7 +29,7 @@ const Dashboard: React.FC<DashboardProps> = ({ meetings, onSyncCalendar, outlook
     if (!onSyncCalendar) return;
     setIsSyncing(true);
     setSyncError(null);
-    
+
     try {
       let events;
       if (outlookClientId) {
@@ -49,11 +50,11 @@ const Dashboard: React.FC<DashboardProps> = ({ meetings, onSyncCalendar, outlook
   };
 
   const startScheduledMeeting = (meeting: FullMeetingData) => {
-    navigate('/record', { 
-      state: { 
+    navigate('/record', {
+      state: {
         meetingId: meeting.id,
-        title: meeting.title 
-      } 
+        title: meeting.title
+      }
     });
   };
 
@@ -65,7 +66,7 @@ const Dashboard: React.FC<DashboardProps> = ({ meetings, onSyncCalendar, outlook
           <p className="text-stone-500">Manage upcoming schedule and past notes.</p>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <button 
+          <button
             onClick={handleSync}
             disabled={isSyncing}
             className="flex items-center gap-2 px-4 py-2 bg-white border border-stone-200 hover:bg-stone-50 text-stone-700 rounded-lg text-sm font-medium transition-colors"
@@ -74,13 +75,13 @@ const Dashboard: React.FC<DashboardProps> = ({ meetings, onSyncCalendar, outlook
             {isSyncing ? 'Syncing...' : 'Sync Calendar'}
           </button>
           {!outlookClientId && (
-             <span className="text-[10px] text-stone-400 bg-stone-100 px-2 py-0.5 rounded-full flex items-center gap-1">
-               <Lock size={10} /> Mock Mode (Set Outlook ID in Settings)
-             </span>
+            <span className="text-[10px] text-stone-400 bg-stone-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+              <Lock size={10} /> Mock Mode (Set Outlook ID in Settings)
+            </span>
           )}
         </div>
       </div>
-      
+
       {syncError && (
         <div className="mb-6 p-3 bg-red-50 text-red-600 text-sm rounded-lg flex items-center gap-2">
           <AlertTriangle size={16} />
@@ -105,9 +106,9 @@ const Dashboard: React.FC<DashboardProps> = ({ meetings, onSyncCalendar, outlook
                 </div>
                 <h3 className="font-bold text-stone-800 mb-1 truncate">{meeting.title}</h3>
                 <p className="text-sm text-stone-500 mb-4">
-                  {new Date(meeting.scheduledAt || '').toLocaleString([], { weekday: 'short', hour: '2-digit', minute:'2-digit' })}
+                  {new Date(meeting.scheduledAt || '').toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' })}
                 </p>
-                <button 
+                <button
                   onClick={() => startScheduledMeeting(meeting)}
                   className="w-full flex items-center justify-center gap-2 py-2 bg-stone-900 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium transition-colors"
                 >
@@ -124,7 +125,7 @@ const Dashboard: React.FC<DashboardProps> = ({ meetings, onSyncCalendar, outlook
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-sm font-bold text-stone-400 uppercase tracking-wider">Recent Recordings</h3>
           <span className="text-xs text-stone-400 bg-stone-100 px-2 py-1 rounded">
-             {pastMeetings.length} Total
+            {pastMeetings.length} Total
           </span>
         </div>
 
@@ -137,7 +138,7 @@ const Dashboard: React.FC<DashboardProps> = ({ meetings, onSyncCalendar, outlook
             <p className="text-stone-500 mb-6 max-w-xs mx-auto">
               Record a new meeting or sync your calendar to get started.
             </p>
-            <Link 
+            <Link
               to="/record"
               className="inline-flex items-center px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors"
             >
@@ -147,19 +148,19 @@ const Dashboard: React.FC<DashboardProps> = ({ meetings, onSyncCalendar, outlook
         ) : (
           <div className="grid gap-4">
             {pastMeetings.map((meeting) => (
-              <Link 
-                key={meeting.id} 
+              <Link
+                key={meeting.id}
                 to={`/meeting/${meeting.id}`}
                 className="group bg-white p-5 rounded-xl border border-stone-200 hover:border-emerald-500 hover:shadow-md transition-all flex items-center justify-between"
               >
                 <div className="flex items-start gap-4">
                   <div className={`w-12 h-12 rounded-lg flex items-center justify-center shrink-0 
-                    ${meeting.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : 
+                    ${meeting.status === 'completed' ? 'bg-emerald-50 text-emerald-600' :
                       meeting.status === 'failed' ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600'}`}>
-                    {meeting.status === 'completed' ? <FileText size={20} /> : 
-                     meeting.status === 'failed' ? <AlertTriangle size={20} /> : <Loader size={20} className="animate-spin" />}
+                    {meeting.status === 'completed' ? <FileText size={20} /> :
+                      meeting.status === 'failed' ? <AlertTriangle size={20} /> : <Loader size={20} className="animate-spin" />}
                   </div>
-                  
+
                   <div>
                     <h3 className="font-semibold text-stone-800 group-hover:text-emerald-700 transition-colors">
                       {meeting.title}
@@ -189,6 +190,21 @@ const Dashboard: React.FC<DashboardProps> = ({ meetings, onSyncCalendar, outlook
                     <span className="text-xs font-medium text-red-600 bg-red-50 px-2 py-1 rounded">
                       Failed
                     </span>
+                  )}
+                  {onDeleteMeeting && (
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (window.confirm('Are you sure you want to delete this meeting?')) {
+                          onDeleteMeeting(meeting.id);
+                        }
+                      }}
+                      className="p-1 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                      title="Delete meeting"
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   )}
                   <ChevronRight size={18} className="text-stone-300 group-hover:text-emerald-500" />
                 </div>

@@ -1,6 +1,6 @@
 {
   "name": "Urdu Granola Notes",
-  "description": "An Urdu-first meeting recorder and auto-note generator powered by Gemini.",
+  "description": "An Urdu-first meeting recorder and auto-note generator powered by Groq.",
   "requestFramePermissions": [
     "microphone"
   ]

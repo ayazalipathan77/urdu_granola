@@ -1,21 +1,21 @@
 import React, { useState, useEffect } from 'react';
 
 interface ApiKeyModalProps {
-  onSave: (geminiKey: string, outlookId: string) => void;
+  onSave: (openaiKey: string, outlookId: string) => void;
   isOpen: boolean;
-  initialGeminiKey: string;
+  initialOpenAIKey: string;
   initialOutlookId: string;
   onClose: () => void;
 }
 
-const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onSave, isOpen, initialGeminiKey, initialOutlookId, onClose }) => {
-  const [inputKey, setInputKey] = useState(initialGeminiKey);
+const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onSave, isOpen, initialOpenAIKey, initialOutlookId, onClose }) => {
+  const [inputKey, setInputKey] = useState(initialOpenAIKey);
   const [inputOutlookId, setInputOutlookId] = useState(initialOutlookId);
 
   useEffect(() => {
-    setInputKey(initialGeminiKey);
+    setInputKey(initialOpenAIKey);
     setInputOutlookId(initialOutlookId);
-  }, [initialGeminiKey, initialOutlookId]);
+  }, [initialOpenAIKey, initialOutlookId]);
 
   if (!isOpen) return null;
 
@@ -23,24 +23,24 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onSave, isOpen, initialGemini
     <div className="fixed inset-0 bg-stone-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 border border-stone-200">
         <h2 className="text-xl font-bold text-stone-800 mb-4">Settings & Keys</h2>
-        
-        {/* Gemini Section */}
+
+        {/* Groq Section */}
         <div className="mb-6">
           <label className="block text-xs font-semibold uppercase text-stone-500 mb-1">
-            Google Gemini API Key <span className="text-red-500">*</span>
+            Groq API Key <span className="text-red-500">*</span>
           </label>
-          <p className="text-stone-400 text-xs mb-2">Required for audio processing.</p>
-          <input 
+          <p className="text-stone-400 text-xs mb-2">Required for audio transcription and processing.</p>
+          <input
             type="password"
             value={inputKey}
             onChange={(e) => setInputKey(e.target.value)}
-            placeholder="AIzaSy..."
+            placeholder="gsk_..."
             className="w-full border border-stone-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
           />
           <div className="mt-1 text-right">
-             <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-xs text-emerald-600 hover:underline">
-               Get Gemini Key
-             </a>
+            <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" className="text-xs text-emerald-600 hover:underline">
+              Get Groq Key
+            </a>
           </div>
         </div>
 
@@ -50,7 +50,7 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onSave, isOpen, initialGemini
             Outlook Client ID (Optional)
           </label>
           <p className="text-stone-400 text-xs mb-2">Required for Real-time Calendar Sync.</p>
-          <input 
+          <input
             type="text"
             value={inputOutlookId}
             onChange={(e) => setInputOutlookId(e.target.value)}
@@ -58,22 +58,22 @@ const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ onSave, isOpen, initialGemini
             className="w-full border border-stone-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
           />
           <div className="mt-1 text-right">
-             <a href="https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade" target="_blank" rel="noopener noreferrer" className="text-xs text-emerald-600 hover:underline">
-               Azure Portal
-             </a>
+            <a href="https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade" target="_blank" rel="noopener noreferrer" className="text-xs text-emerald-600 hover:underline">
+              Azure Portal
+            </a>
           </div>
         </div>
 
         <div className="flex gap-3 justify-end">
-          <button 
+          <button
             onClick={onClose}
             className="px-4 py-2 text-stone-600 hover:bg-stone-100 rounded-lg text-sm font-medium transition-colors"
           >
             Cancel
           </button>
-          <button 
+          <button
             onClick={() => onSave(inputKey, inputOutlookId)}
-            disabled={!inputKey}
+            disabled={!inputKey.trim()}
             className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
           >
             Save Settings

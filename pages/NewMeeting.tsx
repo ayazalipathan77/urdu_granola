@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Mic, Square, Upload, Loader2, AlertCircle, Pause, Play } from 'lucide-react';
 import { FullMeetingData } from '../types';
-import { processAudioWithGemini } from '../services/geminiService';
+import { processAudioWithGroq } from '../services/groqService';
 
 interface NewMeetingProps {
   onAddMeeting: (meeting: FullMeetingData) => void;
@@ -19,7 +19,8 @@ const NewMeeting: React.FC<NewMeetingProps> = ({ onAddMeeting, apiKey }) => {
   const [duration, setDuration] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+  const [meetingTitle, setMeetingTitle] = useState(existingTitle || `Meeting ${new Date().toLocaleString()}`);
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<number | null>(null);
@@ -47,15 +48,15 @@ const NewMeeting: React.FC<NewMeetingProps> = ({ onAddMeeting, apiKey }) => {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      
+
       // Optimization: 16kbps is sufficient for speech and keeps 2-hour files small (~14MB)
-      const options = { 
+      const options = {
         mimeType: 'audio/webm;codecs=opus',
-        audioBitsPerSecond: 16000 
+        audioBitsPerSecond: 16000
       };
-      
+
       const mediaRecorder = new MediaRecorder(stream, MediaRecorder.isTypeSupported(options.mimeType) ? options : undefined);
-      
+
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
 
@@ -111,11 +112,11 @@ const NewMeeting: React.FC<NewMeetingProps> = ({ onAddMeeting, apiKey }) => {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 50 * 1024 * 1024) { 
+      if (file.size > 50 * 1024 * 1024) {
         setError("File size too large (Max 50MB).");
         return;
       }
-      handleProcessing(file, 0); 
+      handleProcessing(file, 0);
     }
   };
 
@@ -130,11 +131,10 @@ const NewMeeting: React.FC<NewMeetingProps> = ({ onAddMeeting, apiKey }) => {
 
     // Use existing ID if we are recording for a scheduled meeting, otherwise generate new
     const meetingId = existingMeetingId || Date.now().toString();
-    const title = existingTitle || `Meeting ${new Date().toLocaleString()}`;
 
     const initialMeetingData: FullMeetingData = {
       id: meetingId,
-      title: title,
+      title: meetingTitle,
       createdAt: new Date().toISOString(), // Update start time to now
       durationSec: recordedDuration,
       status: 'processing',
@@ -145,8 +145,8 @@ const NewMeeting: React.FC<NewMeetingProps> = ({ onAddMeeting, apiKey }) => {
     onAddMeeting(initialMeetingData);
 
     try {
-      const result = await processAudioWithGemini(apiKey, blob, meetingId);
-      
+      const result = await processAudioWithGroq(apiKey, blob, meetingId);
+
       if (result.status === 'failed') {
         throw new Error("Processing failed.");
       }
@@ -159,11 +159,11 @@ const NewMeeting: React.FC<NewMeetingProps> = ({ onAddMeeting, apiKey }) => {
 
       onAddMeeting(completedMeeting); // Update with results
       navigate(`/meeting/${meetingId}`);
-      
+
     } catch (err) {
       console.error(err);
-      setError("Failed to process audio with Gemini. Check your API key or network connection.");
-      
+      setError("Failed to process audio with Groq. Check your API key or network connection.");
+
       const failedMeeting: FullMeetingData = {
         ...initialMeetingData,
         status: 'failed'
@@ -178,7 +178,7 @@ const NewMeeting: React.FC<NewMeetingProps> = ({ onAddMeeting, apiKey }) => {
     const hours = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
-    
+
     if (hours > 0) {
       return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     }
@@ -191,9 +191,23 @@ const NewMeeting: React.FC<NewMeetingProps> = ({ onAddMeeting, apiKey }) => {
         <h2 className="text-3xl font-bold text-stone-800 mb-2">
           {existingTitle ? `Record: ${existingTitle}` : 'Record Meeting'}
         </h2>
-        <p className="text-stone-500">
+        <p className="text-stone-500 mb-4">
           Capture audio in Urdu or English. Optimized for sessions up to 2 hours.
         </p>
+        <div className="max-w-md mx-auto">
+          <label htmlFor="meeting-title" className="block text-sm font-medium text-stone-700 mb-2">
+            Meeting Title
+          </label>
+          <input
+            id="meeting-title"
+            type="text"
+            value={meetingTitle}
+            onChange={(e) => setMeetingTitle(e.target.value)}
+            className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+            placeholder="Enter meeting title"
+            disabled={isRecording || isProcessing}
+          />
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-stone-200 p-8 flex flex-col items-center gap-8">
@@ -206,19 +220,19 @@ const NewMeeting: React.FC<NewMeetingProps> = ({ onAddMeeting, apiKey }) => {
         <div className="h-16 w-full flex items-center justify-center gap-1">
           {isRecording && !isPaused ? (
             Array.from({ length: 20 }).map((_, i) => (
-              <div 
+              <div
                 key={i}
                 className="w-1.5 bg-emerald-500 rounded-full animate-pulse"
-                style={{ 
+                style={{
                   height: `${Math.random() * 100}%`,
                   animationDelay: `${i * 0.05}s`
-                }} 
+                }}
               />
             ))
           ) : isPaused ? (
-             <div className="flex items-center gap-2 text-amber-500 font-medium">
-                <Pause size={20} /> Recording Paused
-             </div>
+            <div className="flex items-center gap-2 text-amber-500 font-medium">
+              <Pause size={20} /> Recording Paused
+            </div>
           ) : (
             <div className="w-full h-0.5 bg-stone-200 rounded-full" />
           )}
@@ -240,7 +254,7 @@ const NewMeeting: React.FC<NewMeetingProps> = ({ onAddMeeting, apiKey }) => {
         ) : (
           <div className="flex gap-4 w-full justify-center items-center">
             {!isRecording ? (
-              <button 
+              <button
                 onClick={startRecording}
                 className="h-20 w-20 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center shadow-lg transition-transform hover:scale-105"
                 title="Start Recording"
@@ -249,8 +263,8 @@ const NewMeeting: React.FC<NewMeetingProps> = ({ onAddMeeting, apiKey }) => {
               </button>
             ) : (
               <>
-                 {/* Pause / Resume Button */}
-                 <button 
+                {/* Pause / Resume Button */}
+                <button
                   onClick={isPaused ? resumeRecording : pauseRecording}
                   className="h-14 w-14 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-700 flex items-center justify-center transition-colors"
                   title={isPaused ? "Resume" : "Pause"}
@@ -259,7 +273,7 @@ const NewMeeting: React.FC<NewMeetingProps> = ({ onAddMeeting, apiKey }) => {
                 </button>
 
                 {/* Stop Button */}
-                <button 
+                <button
                   onClick={stopRecording}
                   className="h-20 w-20 rounded-full bg-stone-800 hover:bg-black text-white flex items-center justify-center shadow-lg transition-transform hover:scale-105"
                   title="Stop & Process"

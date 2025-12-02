@@ -1,18 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Navigate, useNavigate } from 'react-router-dom';
 import { FullMeetingData } from '../types';
-import { Download, ArrowLeft, CheckCircle, List, Type } from 'lucide-react';
+import { Download, ArrowLeft, CheckCircle, List, Type, Trash2 } from 'lucide-react';
 
 interface MeetingDetailProps {
   meetings: FullMeetingData[];
+  onDeleteMeeting?: (meetingId: string) => void;
 }
 
-const MeetingDetail: React.FC<MeetingDetailProps> = ({ meetings }) => {
+const MeetingDetail: React.FC<MeetingDetailProps> = ({ meetings, onDeleteMeeting }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const meeting = meetings.find(m => m.id === id);
   const [activeTab, setActiveTab] = useState<'notes' | 'transcript'>('notes');
-  
+
   if (!meeting) {
     return <Navigate to="/" replace />;
   }
@@ -22,14 +23,14 @@ const MeetingDetail: React.FC<MeetingDetailProps> = ({ meetings }) => {
       <div className="flex flex-col items-center justify-center h-96">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mb-4"></div>
         <h2 className="text-xl font-semibold text-stone-800">Processing Audio...</h2>
-        <p className="text-stone-500">Gemini is analyzing the conversation.</p>
+        <p className="text-stone-500">Groq is analyzing the conversation.</p>
       </div>
     );
   }
 
   const handleDownload = () => {
     if (!meeting) return;
-    
+
     let content = '';
     let filename = `${meeting.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}`;
 
@@ -38,23 +39,23 @@ const MeetingDetail: React.FC<MeetingDetailProps> = ({ meetings }) => {
       content += `MEETING: ${meeting.title}\n`;
       content += `DATE: ${new Date(meeting.createdAt).toLocaleString()}\n\n`;
       content += `SUMMARY\n-------\n${meeting.notes.summary}\n\n`;
-      
+
       content += `ACTION ITEMS\n------------\n`;
       meeting.notes.actionItems.forEach(item => content += `- ${item}\n`);
       content += `\n`;
-      
+
       content += `DECISIONS\n---------\n`;
       meeting.notes.decisions.forEach(item => content += `- ${item}\n`);
       content += `\n`;
-      
+
       content += `KEY POINTS\n----------\n`;
       meeting.notes.keyPoints.forEach(item => content += `- ${item}\n`);
-      
+
     } else if (activeTab === 'transcript' && meeting.transcript) {
       filename += '_transcript.txt';
       content += `TRANSCRIPT: ${meeting.title}\n`;
       content += `DATE: ${new Date(meeting.createdAt).toLocaleString()}\n\n`;
-      
+
       meeting.transcript.forEach(seg => {
         const mins = Math.floor(seg.start / 60);
         const secs = (seg.start % 60).toFixed(0).padStart(2, '0');
@@ -80,13 +81,13 @@ const MeetingDetail: React.FC<MeetingDetailProps> = ({ meetings }) => {
     <div className="animate-in fade-in duration-500">
       {/* Header */}
       <div className="mb-6">
-        <button 
-          onClick={() => navigate('/')} 
+        <button
+          onClick={() => navigate('/')}
           className="flex items-center text-sm text-stone-500 hover:text-emerald-600 mb-4 transition-colors"
         >
           <ArrowLeft size={16} className="mr-1" /> Back to Dashboard
         </button>
-        
+
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-stone-900">{meeting.title}</h1>
@@ -94,9 +95,24 @@ const MeetingDetail: React.FC<MeetingDetailProps> = ({ meetings }) => {
               {new Date(meeting.createdAt).toLocaleString()} • {Math.floor(meeting.durationSec / 60)}m {meeting.durationSec % 60}s
             </p>
           </div>
-          
+
           <div className="flex items-center gap-2">
-            <button 
+            {onDeleteMeeting && (
+              <button
+                onClick={() => {
+                  if (window.confirm('Are you sure you want to delete this meeting?')) {
+                    onDeleteMeeting(meeting.id);
+                    navigate('/');
+                  }
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
+                title="Delete meeting"
+              >
+                <Trash2 size={18} />
+                <span>Delete</span>
+              </button>
+            )}
+            <button
               onClick={handleDownload}
               className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors"
               title={`Download ${activeTab === 'notes' ? 'Notes' : 'Transcript'}`}
@@ -113,22 +129,20 @@ const MeetingDetail: React.FC<MeetingDetailProps> = ({ meetings }) => {
         <nav className="flex gap-6">
           <button
             onClick={() => setActiveTab('notes')}
-            className={`pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
-              activeTab === 'notes' 
-                ? 'border-emerald-600 text-emerald-700' 
-                : 'border-transparent text-stone-500 hover:text-stone-700'
-            }`}
+            className={`pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'notes'
+              ? 'border-emerald-600 text-emerald-700'
+              : 'border-transparent text-stone-500 hover:text-stone-700'
+              }`}
           >
             <List size={16} />
             Smart Notes
           </button>
           <button
             onClick={() => setActiveTab('transcript')}
-            className={`pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
-              activeTab === 'transcript' 
-                ? 'border-emerald-600 text-emerald-700' 
-                : 'border-transparent text-stone-500 hover:text-stone-700'
-            }`}
+            className={`pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'transcript'
+              ? 'border-emerald-600 text-emerald-700'
+              : 'border-transparent text-stone-500 hover:text-stone-700'
+              }`}
           >
             <Type size={16} />
             Transcript
@@ -168,7 +182,7 @@ const MeetingDetail: React.FC<MeetingDetailProps> = ({ meetings }) => {
                   Decisions
                 </h3>
                 <ul className="space-y-3">
-                   {meeting.notes.decisions.map((item, idx) => (
+                  {meeting.notes.decisions.map((item, idx) => (
                     <li key={idx} className="bg-stone-50 p-3 rounded-lg border border-stone-100 text-stone-700">
                       {item}
                     </li>
@@ -177,23 +191,23 @@ const MeetingDetail: React.FC<MeetingDetailProps> = ({ meetings }) => {
                 </ul>
               </section>
             </div>
-            
-             {/* Key Points */}
-             <section className="mt-10">
-                <h3 className="text-lg font-bold text-stone-800 mb-4">
-                  Key Points
-                </h3>
-                <ul className="list-disc pl-5 space-y-2 text-stone-700">
-                   {meeting.notes.keyPoints.map((item, idx) => (
-                    <li key={idx} className="leading-loose">
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </section>
+
+            {/* Key Points */}
+            <section className="mt-10">
+              <h3 className="text-lg font-bold text-stone-800 mb-4">
+                Key Points
+              </h3>
+              <ul className="list-disc pl-5 space-y-2 text-stone-700">
+                {meeting.notes.keyPoints.map((item, idx) => (
+                  <li key={idx} className="leading-loose">
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </section>
           </div>
         ) : activeTab === 'notes' ? (
-             <div className="p-8 text-center text-stone-500">No notes generated.</div>
+          <div className="p-8 text-center text-stone-500">No notes generated.</div>
         ) : null}
 
         {activeTab === 'transcript' && (
@@ -203,7 +217,7 @@ const MeetingDetail: React.FC<MeetingDetailProps> = ({ meetings }) => {
                 {meeting.transcript.map((segment, idx) => (
                   <div key={idx} className="p-4 hover:bg-stone-50 transition-colors flex gap-4">
                     <div className="text-xs font-mono text-stone-400 w-16 pt-1">
-                      {Math.floor(segment.start / 60)}:{(segment.start % 60).toFixed(0).padStart(2,'0')}
+                      {Math.floor(segment.start / 60)}:{(segment.start % 60).toFixed(0).padStart(2, '0')}
                     </div>
                     <div className="flex-1">
                       <div className="text-xs font-bold text-stone-500 uppercase mb-1 tracking-wider">

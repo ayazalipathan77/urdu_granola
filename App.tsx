@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
@@ -7,6 +8,7 @@ import MeetingDetail from './pages/MeetingDetail';
 import ApiKeyModal from './components/ApiKeyModal';
 import { FullMeetingData } from './types';
 import { Settings } from 'lucide-react';
+import { getAvailableGroqModels } from './services/groqService';
 
 // Dummy Data for demonstration
 const MOCK_MEETINGS: FullMeetingData[] = [
@@ -41,10 +43,8 @@ const MOCK_MEETINGS: FullMeetingData[] = [
 
 const App: React.FC = () => {
   // Access environment variables directly
-  // @ts-ignore
-  const envApiKey = process.env.API_KEY;
-  // @ts-ignore
-  const envOutlookId = process.env.OUTLOOK_CLIENT_ID;
+  const envApiKey = import.meta.env.VITE_GROQ_API_KEY;
+  const envOutlookId = import.meta.env.VITE_OUTLOOK_CLIENT_ID;
 
   // Persistence for meetings
   const [meetings, setMeetings] = useState<FullMeetingData[]>(() => {
@@ -55,7 +55,7 @@ const App: React.FC = () => {
   const [apiKey, setApiKey] = useState<string>(() => {
     // Priority: Environment Variable -> Local Storage -> Empty
     if (envApiKey) return envApiKey;
-    return localStorage.getItem('gemini_api_key') || '';
+    return localStorage.getItem('groq_api_key') || '';
   });
 
   const [outlookClientId, setOutlookClientId] = useState<string>(() => {
@@ -65,9 +65,20 @@ const App: React.FC = () => {
 
   const [isKeyModalOpen, setKeyModalOpen] = useState(false);
 
-  // Force open modal if Gemini Key is missing on load
+  // Force open modal if Groq Key is missing on load
   useEffect(() => {
     if (!apiKey) setKeyModalOpen(true);
+  }, [apiKey]);
+
+  // Fetch available Groq models on app start
+  useEffect(() => {
+    if (apiKey) {
+      getAvailableGroqModels(apiKey).then(models => {
+        console.log('Available Groq models:', models);
+      }).catch(error => {
+        console.error('Failed to fetch Groq models:', error);
+      });
+    }
   }, [apiKey]);
 
   useEffect(() => {
@@ -75,14 +86,14 @@ const App: React.FC = () => {
     localStorage.setItem('urdu_granola_meetings', JSON.stringify(meetingsToSave));
   }, [meetings]);
 
-  const handleSaveKeys = (geminiKey: string, outlookId: string) => {
-    setApiKey(geminiKey);
+  const handleSaveKeys = (groqKey: string, outlookId: string) => {
+    setApiKey(groqKey);
     // Only save to local storage if it's different from env (or simply always save to persist user override)
-    localStorage.setItem('gemini_api_key', geminiKey);
-    
+    localStorage.setItem('groq_api_key', groqKey);
+
     setOutlookClientId(outlookId);
     localStorage.setItem('outlook_client_id', outlookId);
-    
+
     setKeyModalOpen(false);
   };
 
@@ -107,19 +118,23 @@ const App: React.FC = () => {
     });
   };
 
+  const handleDeleteMeeting = (meetingId: string) => {
+    setMeetings(prev => prev.filter(meeting => meeting.id !== meetingId));
+  };
+
   return (
     <HashRouter>
-      <ApiKeyModal 
-        isOpen={isKeyModalOpen} 
-        onSave={handleSaveKeys} 
-        initialGeminiKey={apiKey}
+      <ApiKeyModal
+        isOpen={isKeyModalOpen}
+        onSave={handleSaveKeys}
+        initialOpenAIKey={apiKey}
         initialOutlookId={outlookClientId}
         onClose={() => setKeyModalOpen(false)}
       />
-      
+
       <div className="min-h-screen bg-stone-50 flex flex-col md:flex-row">
         <Layout>
-          <button 
+          <button
             onClick={() => setKeyModalOpen(true)}
             className="fixed bottom-4 left-4 z-50 p-3 bg-stone-800 text-white rounded-full shadow-lg hover:bg-black transition-transform hover:scale-105"
             title="Settings"
@@ -128,17 +143,17 @@ const App: React.FC = () => {
           </button>
 
           <Routes>
-            <Route 
-              path="/" 
-              element={<Dashboard meetings={meetings} onSyncCalendar={handleSyncCalendar} outlookClientId={outlookClientId} />} 
+            <Route
+              path="/"
+              element={<Dashboard meetings={meetings} onSyncCalendar={handleSyncCalendar} onDeleteMeeting={handleDeleteMeeting} outlookClientId={outlookClientId} />}
             />
-            <Route 
-              path="/record" 
-              element={<NewMeeting onAddMeeting={handleAddMeeting} apiKey={apiKey} />} 
+            <Route
+              path="/record"
+              element={<NewMeeting onAddMeeting={handleAddMeeting} apiKey={apiKey} />}
             />
-            <Route 
-              path="/meeting/:id" 
-              element={<MeetingDetail meetings={meetings} />} 
+            <Route
+              path="/meeting/:id"
+              element={<MeetingDetail meetings={meetings} onDeleteMeeting={handleDeleteMeeting} />}
             />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
