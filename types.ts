@@ -2,8 +2,9 @@ export interface Meeting {
   id: string;
   title: string;
   createdAt: string; // ISO String
+  scheduledAt?: string; // ISO String for future meetings
   durationSec: number;
-  status: 'processing' | 'completed' | 'failed';
+  status: 'scheduled' | 'processing' | 'completed' | 'failed';
   audioBlob?: Blob; // For demo purposes, we keep blob in memory/indexedDB
 }
 
@@ -30,4 +31,6 @@ export interface FullMeetingData extends Meeting {
 export interface ApiKeyContextType {
   apiKey: string;
   setApiKey: (key: string) => void;
+  outlookClientId: string;
+  setOutlookClientId: (id: string) => void;
 }

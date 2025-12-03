@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Mic, Square, Upload, Loader2, AlertCircle, Pause, Play } from 'lucide-react';
 import { FullMeetingData } from '../types';
 import { processAudioWithGemini } from '../services/geminiService';
@@ -11,6 +11,9 @@ interface NewMeetingProps {
 
 const NewMeeting: React.FC<NewMeetingProps> = ({ onAddMeeting, apiKey }) => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { meetingId: existingMeetingId, title: existingTitle } = location.state || {};
+
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [duration, setDuration] = useState(0);
@@ -46,13 +49,11 @@ const NewMeeting: React.FC<NewMeetingProps> = ({ onAddMeeting, apiKey }) => {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       
       // Optimization: 16kbps is sufficient for speech and keeps 2-hour files small (~14MB)
-      // preventing browser memory crashes and API payload limits.
       const options = { 
         mimeType: 'audio/webm;codecs=opus',
         audioBitsPerSecond: 16000 
       };
       
-      // Fallback if specific options aren't supported
       const mediaRecorder = new MediaRecorder(stream, MediaRecorder.isTypeSupported(options.mimeType) ? options : undefined);
       
       mediaRecorderRef.current = mediaRecorder;
@@ -110,13 +111,10 @@ const NewMeeting: React.FC<NewMeetingProps> = ({ onAddMeeting, apiKey }) => {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // 2 hours at 16kbps is ~15MB. 
-      // Standard MP3s might be larger, so we allow up to 50MB now to support longer uploads.
       if (file.size > 50 * 1024 * 1024) { 
         setError("File size too large (Max 50MB).");
         return;
       }
-      // Estimate duration or set to 0
       handleProcessing(file, 0); 
     }
   };
@@ -130,21 +128,24 @@ const NewMeeting: React.FC<NewMeetingProps> = ({ onAddMeeting, apiKey }) => {
     setIsProcessing(true);
     setError(null);
 
-    const newMeetingId = Date.now().toString();
+    // Use existing ID if we are recording for a scheduled meeting, otherwise generate new
+    const meetingId = existingMeetingId || Date.now().toString();
+    const title = existingTitle || `Meeting ${new Date().toLocaleString()}`;
+
     const initialMeetingData: FullMeetingData = {
-      id: newMeetingId,
-      title: `Meeting ${new Date().toLocaleString()}`,
-      createdAt: new Date().toISOString(),
+      id: meetingId,
+      title: title,
+      createdAt: new Date().toISOString(), // Update start time to now
       durationSec: recordedDuration,
       status: 'processing',
       audioBlob: blob
     };
 
-    // Optimistic add
+    // Optimistic add/update
     onAddMeeting(initialMeetingData);
 
     try {
-      const result = await processAudioWithGemini(apiKey, blob, newMeetingId);
+      const result = await processAudioWithGemini(apiKey, blob, meetingId);
       
       if (result.status === 'failed') {
         throw new Error("Processing failed.");
@@ -157,7 +158,7 @@ const NewMeeting: React.FC<NewMeetingProps> = ({ onAddMeeting, apiKey }) => {
       };
 
       onAddMeeting(completedMeeting); // Update with results
-      navigate(`/meeting/${newMeetingId}`);
+      navigate(`/meeting/${meetingId}`);
       
     } catch (err) {
       console.error(err);
@@ -187,7 +188,9 @@ const NewMeeting: React.FC<NewMeetingProps> = ({ onAddMeeting, apiKey }) => {
   return (
     <div className="max-w-xl mx-auto py-12">
       <div className="text-center mb-10">
-        <h2 className="text-3xl font-bold text-stone-800 mb-2">Record Meeting</h2>
+        <h2 className="text-3xl font-bold text-stone-800 mb-2">
+          {existingTitle ? `Record: ${existingTitle}` : 'Record Meeting'}
+        </h2>
         <p className="text-stone-500">
           Capture audio in Urdu or English. Optimized for sessions up to 2 hours.
         </p>
