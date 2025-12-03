@@ -40,9 +40,11 @@ const MOCK_MEETINGS: FullMeetingData[] = [
 ];
 
 const App: React.FC = () => {
-  // Access environment variable directly as per instructions
+  // Access environment variables directly
   // @ts-ignore
   const envApiKey = process.env.API_KEY;
+  // @ts-ignore
+  const envOutlookId = process.env.OUTLOOK_CLIENT_ID;
 
   // Persistence for meetings
   const [meetings, setMeetings] = useState<FullMeetingData[]>(() => {
@@ -57,6 +59,7 @@ const App: React.FC = () => {
   });
 
   const [outlookClientId, setOutlookClientId] = useState<string>(() => {
+    if (envOutlookId) return envOutlookId;
     return localStorage.getItem('outlook_client_id') || '';
   });
 

@@ -2,8 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
+    <meta name="theme-color" content="#059669" />
     <title>Urdu Granola Notes</title>
+    <link rel="manifest" href="/manifest.json" />
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -29,22 +31,28 @@
         },
       }
     </script>
-    <!-- Preload common icons or fonts if necessary, sticking to system fonts for speed -->
   <script type="importmap">
 {
   "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.0",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
     "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
     "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.10.0",
     "lucide-react": "https://aistudiocdn.com/lucide-react@^0.555.0",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
-    "@azure/msal-browser": "https://esm.sh/@azure/msal-browser@3.10.0"
+    "http": "https://aistudiocdn.com/http@^0.0.1-security",
+    "fs": "https://aistudiocdn.com/fs@^0.0.1-security",
+    "path": "https://aistudiocdn.com/path@^0.12.7",
+    "url": "https://aistudiocdn.com/url@^0.11.4",
+    "vite": "https://aistudiocdn.com/vite@^7.2.6",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
+    "@azure/msal-browser": "https://aistudiocdn.com/@azure/msal-browser@^4.26.2"
   }
 }
 </script>
 </head>
-  <body class="bg-stone-50 text-stone-900 antialiased">
+  <body class="bg-stone-50 text-stone-900 antialiased overscroll-none">
     <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
   </body>
 </html>
