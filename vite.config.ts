@@ -3,11 +3,12 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
-  root: '.', // Serve from project root
-  publicDir: 'public', // Serve static assets from public folder
+  root: '.',
+  publicDir: 'public',
   build: {
     outDir: 'dist',
     emptyOutDir: true,
+    sourcemap: false,
   },
   server: {
     port: 3000,
