@@ -1,0 +1,33 @@
+export interface Meeting {
+  id: string;
+  title: string;
+  createdAt: string; // ISO String
+  durationSec: number;
+  status: 'processing' | 'completed' | 'failed';
+  audioBlob?: Blob; // For demo purposes, we keep blob in memory/indexedDB
+}
+
+export interface TranscriptSegment {
+  start: number;
+  end: number;
+  speaker: string;
+  text: string;
+}
+
+export interface MeetingNotes {
+  summary: string;
+  actionItems: string[];
+  decisions: string[];
+  keyPoints: string[];
+  language: string; // usually 'ur'
+}
+
+export interface FullMeetingData extends Meeting {
+  transcript?: TranscriptSegment[];
+  notes?: MeetingNotes;
+}
+
+export interface ApiKeyContextType {
+  apiKey: string;
+  setApiKey: (key: string) => void;
+}
